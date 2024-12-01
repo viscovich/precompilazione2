@@ -5,7 +5,7 @@
 @layer components {
   .neumorphic {
     @apply shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff]
-           bg-white/90 backdrop-blur-sm;
+           bg-white/90 backdrop-blur-sm relative z-10;
   }
   
   .neumorphic-inset {
@@ -52,5 +52,15 @@ html {
 
 /* Base styles */
 body {
-  @apply bg-gray-100 text-gray-900 antialiased;
+  @apply text-gray-900 antialiased min-h-screen relative;
+  background-image: url('../components/ui/Banner.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Overlay */
+body::before {
+  @apply content-[''] absolute inset-0 bg-white/85 z-0;
 }

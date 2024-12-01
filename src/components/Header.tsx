@@ -4,7 +4,7 @@ import bannerImage from './ui/Banner.webp';
 export function Header() {
   return (
     <div 
-      className="relative w-full h-[500px] bg-cover bg-center"
+      className="relative w-full h-[200px] bg-cover bg-center"
       style={{
         backgroundImage: `url(${bannerImage})`,
         backgroundRepeat: 'no-repeat',

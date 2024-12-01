@@ -2,7 +2,7 @@ import React from 'react';
 import { OpenRouterModel } from '../utils/openRouterApi';
 
 interface CostSummaryProps {
-  selectedModel?: OpenRouterModel;
+  selectedModel: OpenRouterModel;
   schemaName: string;
   completedFields: number;
   totalFields: number;
@@ -15,6 +15,10 @@ interface CostSummaryProps {
 
 export function CostSummary({ selectedModel, schemaName, completedFields, totalFields, cost }: CostSummaryProps) {
   if (!selectedModel) return null;
+
+  // Convert per-token price to price per million tokens
+  const promptPricePerMillion = parseFloat(selectedModel.pricing.prompt.replace('$', '')) * 1000000;
+  const completionPricePerMillion = parseFloat(selectedModel.pricing.completion.replace('$', '')) * 1000000;
 
   return (
     <div className="neumorphic rounded-2xl p-6 bg-white/80 backdrop-blur-sm">
@@ -29,12 +33,12 @@ export function CostSummary({ selectedModel, schemaName, completedFields, totalF
           <span className="font-medium">{selectedModel.name}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-gray-600">Costo per token (prompt):</span>
-          <span className="font-medium">{selectedModel.pricing.prompt}</span>
+          <span className="text-gray-600">Costo per milione di token (prompt):</span>
+          <span className="font-medium">${promptPricePerMillion.toFixed(2)}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-gray-600">Costo per token (completamento):</span>
-          <span className="font-medium">{selectedModel.pricing.completion}</span>
+          <span className="text-gray-600">Costo per milione di token (completamento):</span>
+          <span className="font-medium">${completionPricePerMillion.toFixed(2)}</span>
         </div>
         {cost && (
           <>

@@ -17,16 +17,6 @@ export function ConfigForm({ config, onConfigChange }: ConfigFormProps) {
       try {
         const availableModels = await fetchAvailableModels();
         setModels(availableModels);
-        
-        // Set default model to Claude 3 Sonnet
-        if (!config.model) {
-          const sonnetModel = availableModels.find(m => 
-            m.id === 'anthropic/claude-3-sonnet'
-          );
-          if (sonnetModel) {
-            onConfigChange({ ...config, model: sonnetModel.id });
-          }
-        }
       } catch (error) {
         toast.error('Failed to load available models');
         console.error('Error loading models:', error);
@@ -38,6 +28,21 @@ export function ConfigForm({ config, onConfigChange }: ConfigFormProps) {
     loadModels();
   }, []);
 
+  const formatPrice = (priceStr: string): string => {
+    const price = parseFloat(priceStr.replace('$', ''));
+    const pricePerMillion = (price * 1000000).toFixed(2);
+    return `$${pricePerMillion}`;
+  };
+
+  const handleModelChange = (modelId: string) => {
+    const selectedModel = models.find(m => m.id === modelId);
+    onConfigChange({ 
+      ...config, 
+      model: modelId,
+      selectedModel: selectedModel
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -46,14 +51,14 @@ export function ConfigForm({ config, onConfigChange }: ConfigFormProps) {
         </label>
         <select
           value={config.model}
-          onChange={(e) => onConfigChange({ ...config, model: e.target.value })}
+          onChange={(e) => handleModelChange(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           disabled={isLoading}
         >
           <option value="">Select a model</option>
           {models.map((model) => (
             <option key={model.id} value={model.id}>
-              {model.name} (Prompt: {model.pricing.prompt}, Completion: {model.pricing.completion})
+              {model.name} (Per million tokens - Prompt: {formatPrice(model.pricing.prompt)}, Completion: {formatPrice(model.pricing.completion)})
             </option>
           ))}
         </select>

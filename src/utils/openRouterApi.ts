@@ -82,32 +82,71 @@ function createPrompt(text: string, fields: Field[]): string {
     return description;
   }).join('\n');
 
-  return `
-You are a document parser. Extract information from the text below and provide values for the specified fields.
-Respond ONLY with a valid JSON object containing the extracted values.
+  return `FORMAT: JSON
 
-Fields to extract:
+INSTRUCTIONS:
+1. Extract values for the specified fields from the provided text
+2. Return ONLY a JSON object with the extracted values
+3. DO NOT include any text before or after the JSON object
+4. DO NOT include any explanations or conversation
+5. DO NOT include fields with "Non specificato" or similar values
+6. DO NOT include fields where values cannot be found
+
+FIELDS TO EXTRACT:
 ${fieldDescriptions}
 
-Text content:
+TEXT TO PROCESS:
 ${text}
 
-Rules:
-- Keys must match the field names exactly
-- For combo box fields, return the ID of the matching option
-- For select fields, values must be one of the provided options
-- For checkbox fields, values must be true or false
-- For number fields, values must be numeric
-- For text fields, values must be strings
-- If a value cannot be found or is uncertain, omit the field from the response
+VALIDATION RULES:
+- Keys must exactly match field names
+- Combo box fields: return option ID
+- Select fields: value must be from options list
+- Checkbox fields: must be true/false
+- Number fields: must be numeric
+- Text fields: must be strings
+- Date fields: must be valid date strings
+- Omit any fields with empty, null, or "Non specificato" values
 
-Example response format:
+RESPONSE FORMAT:
 {
-  "fieldName1": "value1",
-  "fieldName2": true,
-  "fieldName3": 42,
-  "comboBoxField": "01"
-}`;
+  "fieldName": "value",
+  ...
+}
+
+IMPORTANT: Your entire response must be a valid JSON object. No other text is allowed.`;
+}
+
+function isValidJSONString(str: string): boolean {
+  try {
+    const trimmed = str.trim();
+    // Check if the string starts with { and ends with }
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+      return false;
+    }
+    // Try parsing it as JSON
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function extractJSONFromText(text: string): string {
+  // Find the first { and last } in the text
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('No valid JSON object found in response');
+  }
+  
+  const jsonCandidate = text.slice(start, end + 1);
+  if (!isValidJSONString(jsonCandidate)) {
+    throw new Error('Extracted content is not valid JSON');
+  }
+  
+  return jsonCandidate;
 }
 
 export async function processWithOpenRouter(
@@ -116,31 +155,40 @@ export async function processWithOpenRouter(
   config: OpenRouterConfig
 ): Promise<ProcessingResult> {
   try {
+    // Validate model before proceeding
+    const availableModels = await fetchAvailableModels();
+    const selectedModel = availableModels.find(m => m.id === config.model);
+    
+    if (!selectedModel) {
+      throw new Error(`Model ${config.model} is not available or supported`);
+    }
+
+    // Check if it's a Gemini model
+    if (config.model.toLowerCase().includes('gemini')) {
+      throw new Error('Gemini models are currently not fully supported through OpenRouter. Please select a different model.');
+    }
+
     const prompt = createPrompt(text, fields);
     const response = await makeAPIRequest(prompt, config);
     const { data, usage } = await parseAPIResponse(response, fields);
     
     // Calculate costs
-    const model = await fetchAvailableModels().then(
-      models => models.find(m => m.id === config.model)
-    );
-    
-    if (!model) {
-      throw new Error('Model pricing information not available');
-    }
+    const promptRate = Number(selectedModel.pricing.prompt.replace('$', ''));
+    const completionRate = Number(selectedModel.pricing.completion.replace('$', ''));
 
-    const promptRate = parseFloat(model.pricing.prompt.replace('$', '')) || 0;
-    const completionRate = parseFloat(model.pricing.completion.replace('$', '')) || 0;
+    // Calculate costs based on token usage
+    const promptCost = usage.prompt_tokens * promptRate;
+    const completionCost = usage.completion_tokens * completionRate;
+    const totalCost = promptCost + completionCost;
 
-    const cost = {
-      promptCost: (usage.prompt_tokens / 1000) * promptRate,
-      completionCost: (usage.completion_tokens / 1000) * completionRate,
-      get totalCost() {
-        return this.promptCost + this.completionCost;
+    return {
+      data,
+      cost: {
+        promptCost,
+        completionCost,
+        totalCost
       }
     };
-
-    return { data, cost };
   } catch (error) {
     console.error('OpenRouter API Error:', error);
     throw new APIProcessingError(
@@ -160,10 +208,20 @@ async function makeAPIRequest(prompt: string, config: OpenRouterConfig): Promise
     },
     body: JSON.stringify({
       model: config.model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1,
+      messages: [
+        {
+          role: 'system',
+          content: 'CRITICAL INSTRUCTION: You are a JSON-only response generator. You must ONLY output valid JSON objects. ANY text before or after the JSON object is STRICTLY FORBIDDEN. Your entire response must be parseable as JSON. No conversation, no explanations, ONLY JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0,
       max_tokens: 1000,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      stop: ["\n\n", "```", "Alright", "I understand", "Here", "The JSON"]
     }),
   });
 
@@ -175,25 +233,61 @@ async function makeAPIRequest(prompt: string, config: OpenRouterConfig): Promise
     );
   }
 
-  return response;
+  const responseText = await response.text();
+  if (!responseText) {
+    throw new Error('Received empty response from OpenRouter API');
+  }
+
+  try {
+    // Try to extract valid JSON from the response
+    const jsonContent = extractJSONFromText(responseText);
+    
+    // If successful, create a new Response object with the validated content
+    return new Response(jsonContent, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Invalid JSON response:', responseText);
+    throw new Error('Received invalid JSON response from OpenRouter API');
+  }
 }
 
 async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ data: Record<string, any>, usage: { prompt_tokens: number, completion_tokens: number } }> {
   try {
-    const responseData = await response.json() as OpenRouterResponse;
-    const content = responseData.choices?.[0]?.message?.content;
+    let responseData: OpenRouterResponse;
     
+    try {
+      const responseText = await response.text();
+      // Try to extract JSON if the response isn't already valid JSON
+      const jsonContent = isValidJSONString(responseText) 
+        ? responseText 
+        : extractJSONFromText(responseText);
+      responseData = JSON.parse(jsonContent);
+    } catch (error) {
+      console.error('Failed to parse response:', error);
+      throw new Error('Invalid response format from API');
+    }
+    
+    if (!responseData || !responseData.choices || responseData.choices.length === 0) {
+      throw new Error('Invalid or empty response structure from API');
+    }
+
+    const content = responseData.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('Empty response from API');
+      throw new Error('No content received in API response');
     }
 
     let parsedContent: Record<string, any>;
     try {
-      const cleanContent = content.replace(/\\n/g, '').trim();
-      parsedContent = typeof cleanContent === 'string' ? JSON.parse(cleanContent) : content;
+      // Try to extract JSON if the content isn't already valid JSON
+      const jsonContent = isValidJSONString(content) 
+        ? content 
+        : extractJSONFromText(content);
+      parsedContent = JSON.parse(jsonContent);
     } catch (error) {
       console.error('JSON Parse Error:', error, 'Content:', content);
-      throw new Error('Invalid JSON in API response');
+      throw new Error('Invalid JSON in API response content');
     }
 
     const validatedContent: Record<string, any> = {};
@@ -201,7 +295,16 @@ async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ 
     for (const field of fields) {
       const value = parsedContent[field.name];
       
-      if (value === undefined || value === null || value === '') {
+      // Skip empty, null, or "Non specificato" values
+      if (value === undefined || 
+          value === null || 
+          value === '' || 
+          (typeof value === 'string' && 
+           (value.toLowerCase().includes('non specificato') || 
+            value.toLowerCase().includes('not specified') ||
+            value.toLowerCase().includes('unspecified') ||
+            value.toLowerCase().includes('n/a') ||
+            value.toLowerCase().includes('none')))) {
         continue;
       }
 
@@ -246,7 +349,7 @@ async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ 
 
     return {
       data: validatedContent,
-      usage: responseData.usage
+      usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0 }
     };
   } catch (error) {
     console.error('Response Parsing Error:', error);

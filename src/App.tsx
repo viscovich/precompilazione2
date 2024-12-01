@@ -20,7 +20,7 @@ function App() {
     model: '',
   });
   const [selectedSchema, setSelectedSchema] = useState('');
-  const [selectedModel, setSelectedModel] = useState<OpenRouterModel>();
+  const [selectedModel, setSelectedModel] = useState<OpenRouterModel | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfText, setPdfText] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -116,7 +116,7 @@ function App() {
   const currentSchema = getSchemaById(selectedSchema);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen">
       <Header />
       
       <div className="max-w-5xl mx-auto px-4 -mt-20 relative z-10 space-y-8 pb-12">
@@ -125,9 +125,8 @@ function App() {
           <div className="space-y-6">
             <ConfigForm config={config} onConfigChange={(newConfig) => {
               setConfig(newConfig);
-              const models = availableSchemas.find(s => s.id === newConfig.model);
-              if (models) {
-                setSelectedModel(models as unknown as OpenRouterModel);
+              if (newConfig.selectedModel) {
+                setSelectedModel(newConfig.selectedModel);
               }
             }} />
             <SchemaSelector
