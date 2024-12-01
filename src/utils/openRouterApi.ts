@@ -91,6 +91,9 @@ INSTRUCTIONS:
 4. DO NOT include any explanations or conversation
 5. DO NOT include fields with "Non specificato" or similar values
 6. DO NOT include fields where values cannot be found
+7. DO NOT return a field's label as its value
+8. DO NOT return a field's type as its value
+9. DO NOT return "false" as a string value for non-checkbox fields
 
 FIELDS TO EXTRACT:
 ${fieldDescriptions}
@@ -107,6 +110,9 @@ VALIDATION RULES:
 - Text fields: must be strings
 - Date fields: must be valid date strings
 - Omit any fields with empty, null, or "Non specificato" values
+- Omit any fields where the value exactly matches the field's label
+- Omit any fields where the value exactly matches the field's type
+- Omit any fields where the value is "false" (except for checkbox fields)
 
 RESPONSE FORMAT:
 {
@@ -291,16 +297,22 @@ async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ 
     }
 
     const validatedContent: Record<string, any> = {};
+    let validFieldCount = 0;
     
     for (const field of fields) {
       const value = parsedContent[field.name];
       
-      // Skip empty, null, or "Non specificato" values
+      // Skip empty, null, "Non specificato" values, values that match the field label or type
       if (value === undefined || 
           value === null || 
           value === '' || 
+          value === field.label ||
+          value === field.type ||
           (typeof value === 'string' && 
-           (value.toLowerCase().includes('non specificato') || 
+           (value.toLowerCase() === field.label.toLowerCase() ||
+            value.toLowerCase() === field.type.toLowerCase() ||
+            value.toLowerCase() === 'false' || // Skip "false" string values for non-checkbox fields
+            value.toLowerCase().includes('non specificato') || 
             value.toLowerCase().includes('not specified') ||
             value.toLowerCase().includes('unspecified') ||
             value.toLowerCase().includes('n/a') ||
@@ -308,11 +320,14 @@ async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ 
         continue;
       }
 
+      let isValidValue = false;
+
       switch (field.type) {
         case 'combo box':
           const options = field.options as ComboBoxOption[];
           if (options.some(opt => opt.id === value)) {
             validatedContent[field.name] = value;
+            isValidValue = true;
           }
           break;
 
@@ -320,30 +335,40 @@ async function parseAPIResponse(response: Response, fields: Field[]): Promise<{ 
           const num = Number(value);
           if (!isNaN(num)) {
             validatedContent[field.name] = num;
+            isValidValue = true;
           }
           break;
 
         case 'checkbox':
           if (typeof value === 'boolean') {
             validatedContent[field.name] = value;
+            isValidValue = value; // Only count true checkbox values
           } else if (typeof value === 'string') {
-            validatedContent[field.name] = value.toLowerCase() === 'true';
+            const boolValue = value.toLowerCase() === 'true';
+            validatedContent[field.name] = boolValue;
+            isValidValue = boolValue; // Only count true checkbox values
           }
           break;
 
         case 'select':
           if (field.options?.includes(value)) {
             validatedContent[field.name] = value;
+            isValidValue = true;
           }
           break;
 
         case 'text':
         case 'textarea':
         case 'date':
-          if (value !== null) {
+          if (value !== null && value !== '') {
             validatedContent[field.name] = String(value);
+            isValidValue = true;
           }
           break;
+      }
+
+      if (isValidValue) {
+        validFieldCount++;
       }
     }
 

@@ -12,6 +12,7 @@ import { getErrorMessage } from './utils/errorUtils';
 import { Field, OpenRouterConfig } from './types';
 import { Button } from './components/Button';
 import { availableSchemas, getSchemaById } from './utils/schemaUtils';
+import testPdf from './config/pdf/16764_AUA_ProvBL.pdf';
 
 function App() {
   const [fields, setFields] = useState<Field[]>([]);
@@ -19,7 +20,7 @@ function App() {
     apiKey: import.meta.env.VITE_OPENROUTER_API_KEY || '',
     model: '',
   });
-  const [selectedSchema, setSelectedSchema] = useState('');
+  const [selectedSchema, setSelectedSchema] = useState(availableSchemas[0]?.id || '');
   const [selectedModel, setSelectedModel] = useState<OpenRouterModel | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfText, setPdfText] = useState<string | null>(null);
@@ -72,6 +73,21 @@ function App() {
     }
   };
 
+  const handleUseTestPDF = async () => {
+    try {
+      const response = await fetch(testPdf);
+      if (!response.ok) {
+        throw new Error('Failed to fetch test PDF');
+      }
+      const blob = await response.blob();
+      const file = new File([blob], '16764_AUA_ProvBL.pdf', { type: 'application/pdf' });
+      await handlePDFUpload(file);
+    } catch (error) {
+      console.error('Error loading test PDF:', error);
+      toast.error('Errore nel caricamento del PDF di test');
+    }
+  };
+
   const handleProcess = async () => {
     if (!config.model) {
       toast.error('Seleziona un modello prima di procedere');
@@ -106,6 +122,17 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleCleanData = () => {
+    const cleanedFields = fields.map(field => ({
+      ...field,
+      value: field.type === 'checkbox' ? false : '',
+    }));
+    setFields(cleanedFields);
+    setCompletedFields(0);
+    setProcessingCost(undefined);
+    toast.success('Dati puliti con successo');
   };
 
   const handleRemovePDF = () => {
@@ -146,6 +173,7 @@ function App() {
             selectedFile={pdfFile}
             onFileRemove={handleRemovePDF}
             fileType="pdf"
+            onUseTestFile={handleUseTestPDF}
           />
 
           {selectedModel && currentSchema && (
@@ -163,13 +191,21 @@ function App() {
           <div className="neumorphic rounded-2xl p-6 bg-white/80 backdrop-blur-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Dati Estratti</h2>
-              <Button
-                onClick={handleProcess}
-                loading={isProcessing}
-                disabled={!selectedSchema || !pdfFile}
-              >
-                {isProcessing ? 'Elaborazione...' : 'Elabora Documento'}
-              </Button>
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleCleanData}
+                  disabled={!selectedSchema}
+                >
+                  Pulisci Dati
+                </Button>
+                <Button
+                  onClick={handleProcess}
+                  loading={isProcessing}
+                  disabled={!selectedSchema || !pdfFile}
+                >
+                  {isProcessing ? 'Elaborazione...' : 'Elabora Documento'}
+                </Button>
+              </div>
             </div>
             <DynamicForm 
               fields={fields} 

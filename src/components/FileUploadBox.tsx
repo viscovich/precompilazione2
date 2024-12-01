@@ -2,6 +2,7 @@ import React from 'react';
 import { FileUpload } from './FileUpload';
 import { FilePreview } from './FilePreview';
 import { Upload } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface FileUploadBoxProps {
   title: string;
@@ -11,6 +12,7 @@ interface FileUploadBoxProps {
   selectedFile: File | null;
   onFileRemove: () => void;
   fileType: 'json' | 'pdf';
+  onUseTestFile?: () => void;
 }
 
 export function FileUploadBox({
@@ -21,6 +23,7 @@ export function FileUploadBox({
   selectedFile,
   onFileRemove,
   fileType,
+  onUseTestFile,
 }: FileUploadBoxProps) {
   return (
     <div className="p-6 neumorphic rounded-2xl">
@@ -34,13 +37,22 @@ export function FileUploadBox({
           onRemove={onFileRemove}
         />
       ) : (
-        <div className="neumorphic-inset rounded-xl p-6">
-          <FileUpload
-            onFileSelect={onFileSelect}
-            accept={accept}
-            icon={<Upload className="w-12 h-12 text-gray-400 mb-4" />}
-            label={`Trascina qui il file ${fileType.toUpperCase()} o clicca per caricarlo`}
-          />
+        <div className="space-y-4">
+          <div className="neumorphic-inset rounded-xl p-6">
+            <FileUpload
+              onFileSelect={onFileSelect}
+              accept={accept}
+              icon={<Upload className="w-12 h-12 text-gray-400 mb-4" />}
+              label={`Trascina qui il file ${fileType.toUpperCase()} o clicca per caricarlo`}
+            />
+          </div>
+          {onUseTestFile && (
+            <div className="flex justify-center">
+              <Button onClick={onUseTestFile}>
+                Usa PDF di Test
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
