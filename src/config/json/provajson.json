@@ -1,0 +1,144 @@
+{
+  "fields": [
+    {
+      "name": "stato",
+      "type": "combo box",
+      "label": "Stato",
+      "options": [
+        {
+          "id": "01",
+          "value": "Attivo"
+        },
+        {
+          "id": "02",
+          "value": "Cessato"
+        }
+      ]
+    },
+    {
+      "name": "dataCambioStato",
+      "type": "date",
+      "label": "Data Cambio Stato"
+    },
+    {
+      "name": "classificazione",
+      "type": "text",
+      "label": "Classificazione"
+    },
+    {
+      "name": "dittaGestore",
+      "type": "text",
+      "label": "Ditta Gestore"
+    },
+    {
+      "name": "tecnicoResponsabile",
+      "type": "text",
+      "label": "Tecnico Responsabile"
+    },
+    {
+      "name": "dettaglioTipoImpianto",
+      "type": "text",
+      "label": "Dettaglio Tipo Impianto"
+    },
+    {
+      "name": "zonaPRRA",
+      "type": "text",
+      "label": "Zona PRRA"
+    },
+    {
+      "name": "sistemaFognatura",
+      "type": "text",
+      "label": "Sistema Fognatura"
+    },
+    {
+      "name": "percentualeSistemaFognaturaSep",
+      "type": "number",
+      "label": "% Sistema Fognatura Sep."
+    },
+    {
+      "name": "dataDismissionePrevista",
+      "type": "date",
+      "label": "Data Dismissione Prevista"
+    },
+    {
+      "name": "predisposizioneNuoviAllacciamenti",
+      "type": "text",
+      "label": "Predisposizione Nuovi Allacciamenti"
+    },
+    {
+      "name": "numeroAbitantiEquivalenti",
+      "type": "number",
+      "label": "Numero Ab. Equiv."
+    },
+    {
+      "name": "riferitiA",
+      "type": "text",
+      "label": "Riferiti a"
+    },
+    {
+      "name": "portataMassima",
+      "type": "number",
+      "label": "Portata Massima (m3/h)"
+    },
+    {
+      "name": "tempoDiRitenzione",
+      "type": "number",
+      "label": "Tempo di Ritenzione (h)"
+    },
+    {
+      "name": "byPassAllImpianto",
+      "type": "text",
+      "label": "By-pass All'Impianto"
+    },
+    {
+      "name": "portataByPass",
+      "type": "number",
+      "label": "Portata By-pass (m3/a)"
+    },
+    {
+      "name": "consumoDiOssigeno",
+      "type": "number",
+      "label": "Consumo di Ossigeno (kg/a)"
+    },
+    {
+      "name": "lineeAcque",
+      "type": "text",
+      "label": "Linee Acque"
+    },
+    {
+      "name": "lineeFanghi",
+      "type": "text",
+      "label": "Linee Fanghi"
+    },
+    {
+      "name": "tipoRefluoTrattato",
+      "type": "text",
+      "label": "Tipo Refluo Trattato (in AE)"
+    },
+    {
+      "name": "portataMaxRifiutiIngresso",
+      "type": "number",
+      "label": "Portata Max Rifiuti Ingresso (m3/a)"
+    },
+    {
+      "name": "descrizioneTrattamentoRifiutiLiquidi",
+      "type": "text",
+      "label": "Descrizione Trattamento Rifiuti Liquidi"
+    },
+    {
+      "name": "inAutorizzazione",
+      "type": "text",
+      "label": "In Autorizzazione"
+    },
+    {
+      "name": "inComunicazione",
+      "type": "text",
+      "label": "In Comunicazione"
+    },
+    {
+      "name": "note",
+      "type": "textarea",
+      "label": "Note"
+    }
+  ]
+}
